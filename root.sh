@@ -23,9 +23,28 @@ fi
 if [ ! -e "$ROOTFS_DIR/.installed" ]; then
   echo "Downloading Ubuntu 22.04.5 rootfs ($ARCH_ALT)..."
   rm -f /tmp/rootfs.tar.gz
-  wget --tries=$max_retries --timeout=$timeout --no-hsts -O /tmp/rootfs.tar.gz "$ROOTFS_URL" \
-    || { echo "ERROR: rootfs download failed"; exit 1; }
-  [ -s /tmp/rootfs.tar.gz ] || { echo "ERROR: downloaded file is empty"; exit 1; }
+  FILE="ubuntu-base-22.04.5-base-${ARCH_ALT}.tar.gz"
+  got=0
+  for BASE in \
+    "https://cdimage.ubuntu.com/ubuntu-base/releases/22.04/release" \
+    "https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cdimage/ubuntu-base/releases/22.04/release" \
+    "https://mirrors.ustc.edu.cn/ubuntu-cdimage/ubuntu-base/releases/22.04/release" \
+    "https://mirror.nju.edu.cn/ubuntu-cdimage/ubuntu-base/releases/22.04/release" \
+    "https://mirrors.aliyun.com/ubuntu-cdimage/ubuntu-base/releases/22.04/release"
+  do
+    echo "Trying $BASE ..."
+    rm -f /tmp/rootfs.tar.gz
+    if wget --tries=2 --timeout=$timeout --no-hsts -O /tmp/rootfs.tar.gz "$BASE/$FILE" \
+       && [ -s /tmp/rootfs.tar.gz ]; then
+      got=1
+      break
+    fi
+  done
+  if [ "$got" != 1 ]; then
+    echo "ERROR: all download sources failed."
+    echo "Download $FILE on another device, copy it to /tmp/rootfs.tar.gz, and re-run."
+    exit 1
+  fi
 
   echo "Extracting..."
   tar -xf /tmp/rootfs.tar.gz -C "$ROOTFS_DIR" || { echo "ERROR: extraction failed"; exit 1; }
